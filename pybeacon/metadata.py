@@ -1,11 +1,10 @@
+#!/usr/bin/env python3
+
 import struct
 import base64
 import hashlib
 import binascii
-try:
-    from StringIO import StringIO ## for Python 2
-except ImportError:
-    from io import StringIO ## for Python 3
+from io import BytesIO as StringIO# py3
 import sys
 
 import M2Crypto
@@ -54,15 +53,15 @@ class Metadata(object):
         self.hmac_key = digest[16:]
 
     def rsa_decrypt(self):
-        pkey = M2Crypto.RSA.load_key_string(PRIVATE_KEY_TEMPLATE.format(self.private_key))
+        pkey = M2Crypto.RSA.load_key_string(PRIVATE_KEY_TEMPLATE.format(self.private_key).encode('utf8')) # py3 encode added
         plaintext = pkey.private_decrypt(self.data, M2Crypto.RSA.pkcs1_padding)
-        assert plaintext[0:4] == '\x00\x00\xBE\xEF'
-        self.data = StringIO.StringIO(plaintext[8:])
+        assert plaintext[0:4] == b'\x00\x00\xBE\xEF' # py3 b'' added
+        self.data = StringIO(plaintext[8:])
 
     def rsa_encrypt(self):
-        bio = M2Crypto.BIO.MemoryBuffer(PUBLIC_KEY_TEMPLATE.format(self.public_key))
+        bio = M2Crypto.BIO.MemoryBuffer(PUBLIC_KEY_TEMPLATE.format(self.public_key).encode('utf8'))  # py3 encode added
         pubkey = M2Crypto.RSA.load_pub_key_bio(bio)
-        data = '\x00\x00\xBE\xEF' + struct.pack('>I', self.data.len) + self.data.read()
+        data = b'\x00\x00\xBE\xEF' + struct.pack('>I', self.data.getbuffer().nbytes) + self.data.read()  # py3 b'' added + len fix
         self.ciphertext = pubkey.public_encrypt(data, M2Crypto.RSA.pkcs1_padding)
         return base64.b64encode(self.ciphertext)
 
@@ -97,10 +96,10 @@ class Metadata(object):
         return b & s == s
 
     def print_config(self):
-        print("raw AES key: %s" % self.raw_aes_keys[0:8].encode('hex'))
-        print("raw HMAC key: %s" % self.raw_aes_keys[8:].encode('hex'))
-        print("AES key: %s" % self.aes_key.encode('hex'))
-        print("HMAC key: %s" % self.hmac_key.encode('hex'))
+        print("raw AES key: %s" % self.raw_aes_keys[0:8].hex()) # py3 fix, py2 encode('hex')
+        print("raw HMAC key: %s" % self.raw_aes_keys[8:].hex())
+        print("AES key: %s" % self.aes_key.hex())
+        print("HMAC key: %s" % self.hmac_key.hex())
         print("ver: %s" % self.ver)
         print("host: %s" % self.intz)
         print("computer: %s" % self.comp)
@@ -120,7 +119,7 @@ class Metadata(object):
         self.calculate_aes()
 
         if self.cs_version < 4:           
-            config = self.data.read().split('\t')
+            config = self.data.read().decode('utf8').split('\t') # py3 encode added
             self.bid = config[0]
             self.pid = config[1]
             self.ver = config[2]
@@ -152,7 +151,7 @@ class Metadata(object):
 
         self.is64 = int(self.flag(b, 4))
         self.high_integrity = self.flag(b, 8)
-        self.ver, self.intz, self.comp, self.user, self.proc = self.data.read().split('\t')
+        self.ver, self.intz, self.comp, self.user, self.proc = self.data.read().decode('utf8').split('\t') # py3 encode added
 
     def pack(self):
         if not all([
@@ -186,26 +185,26 @@ class Metadata(object):
 
         # CS 3.5
         if self.cs_version < 4:
-            self.data = StringIO.StringIO()
+            self.data = StringIO()
             self.data.write(self.raw_aes_keys)
-            self.data.write('\t'.join([
+            x = '\t'.join([
                 str(self.bid),
                 str(self.pid),
                 self.ver,
                 self.intz,
                 self.comp,
                 self.user,
-                self.is64
-                ]))
+                self.is64]).encode('utf8') # py3 encode added
+            self.data.write(x)
             if self.barch == 'x64':
-                self.data.write("\t1")
+                self.data.write(b'\t1') # py3 b'' added
             else:
-                self.data.write("\t0")
+                self.data.write(b'\t0') # py3 b'' added
             self.data.seek(0)
             return self.rsa_encrypt()
 
         # CS 4.0 and later
-        self.data = StringIO.StringIO()
+        self.data = StringIO()
         self.data.write(self.raw_aes_keys)
         self.writeShort(self.charset, '<')
         self.writeShort(self.charset_oem, '<')
