@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import sys
 import struct
@@ -16,7 +16,7 @@ def checksum8(s):
 
 def gen_checksum8(x64=False):
     chk = string.ascii_letters + string.digits
-    for _ in xrange(64):
+    for _ in range(64):
         uri = "".join(random.sample(chk,3))
         r = "".join(sorted(list(string.ascii_letters+string.digits), key=lambda *args: random.random()))
         for char in r:
@@ -33,8 +33,12 @@ def download_beacon(host, x64=False):
     print("Unable to retrieve stager")
     sys.exit(1)
 
-def xor(key, buf):
-    return ''.join([(chr(ord(x) ^ ord(key[n % len(key)]))) for n, x in enumerate(buf)])
+#def xor(key, buf): # py2
+#    return ''.join([(chr(ord(x) ^ ord(key[n % len(key)]))) for n, x in enumerate(buf)])
+
+def xor(key, buf): # py3
+    x = bytes(a ^ b for a, b in zip(buf, key)) # ; print(key, buf, x) # py3 debug
+    return x
 
 def read4(buf):
     return buf[4:], buf[0:4]
@@ -45,7 +49,7 @@ def find_start_index(buf):
         key = buf[i:i+4]
         _bytes = buf[i+8:i+12]
         outbuf = xor(key, _bytes)
-        if outbuf[0:2] == '\x4d\x5a':
+        if outbuf[0:2] == b'\x4d\x5a': # b'' added for py3
             break
         i+= 1
     return i
@@ -69,16 +73,18 @@ if __name__ == '__main__':
 
     DECODE_LOOP_START = find_start_index(buf)
 
+#    xor(b'\x01\x03',b'\x02\x04\x01\x03'); exit() # py3 debug
+
     buf = buf[DECODE_LOOP_START:]
     print("[*] Index: %d" % DECODE_LOOP_START)
 
     buf, key = read4(buf)
-    print("[*] Initial Key: 0x%s" % key.encode('hex'))
+    print("[*] Initial Key: 0x%s" % key.hex()) # py3 fix from .encode('hex'))
 
     buf, size_enc = read4(buf)
     print("[*] DLL Size: %d" % struct.unpack("<I", xor(key, size_enc))[0])
-
-    outbuf = ""
+ 
+    outbuf = b'' # py3 b'' added
     while len(buf) > 0:
         buf, _bytes = read4(buf)
         outbuf += xor(key, _bytes)
