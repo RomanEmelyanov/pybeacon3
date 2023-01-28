@@ -1,10 +1,11 @@
+#!/usr/bin/env python3
+
 import random
 import base64
 import argparse
 import requests
 
 from pybeacon.metadata import Metadata
-
 
 def register_beacon(m, ipaddr, uri, host=""):
     headers = {'Cookie': m }
@@ -18,7 +19,7 @@ if __name__ == '__main__':
     parser.add_argument('-t', '--teamserver', help='Target Teamserver IP address', required=True)
     parser.add_argument('--host', help='Optional host header (for Domain Fronting)', required=False)
     parser.add_argument('--uri', help='Checkin (GET) URI', default='__utm.gif', required=False)
-    parser.add_argument('--computer', help='Computer name to use', required=True)
+    parser.add_argument('-c', '--computer', help='Computer name to use', required=True) # c added
     parser.add_argument('-i', '--ip-address', help='IP address to use', required=True)
     parser.add_argument('-u', '--user', help='Username to use', required=True)
     parser.add_argument('-p', '--proc', help='Process name to use', required=True)
