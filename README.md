@@ -17,10 +17,10 @@ There is a small library which includes encryption/decoding methods, however som
 Just an adapted version for Python3 repo - https://github.com/nccgroup/pybeacon/
 
 # Demo
-<code>
+```console
 $ python3 ./stager-decode.py -d 10.0.2.15 -o debug/beacon34v3.bin
 [*] Index: 76
 [*] Initial Key: 0x66c20f4e
 [*] DLL Size: 213504
 [+] Beacon decoded and written to: debug/beacon34v3.bin
-</code>
+```
