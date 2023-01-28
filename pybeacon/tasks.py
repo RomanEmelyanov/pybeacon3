@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 
 import hashlib
 import hmac
@@ -6,10 +7,7 @@ import base64
 import sys
 import struct
 import random
-try:
-    from StringIO import StringIO ## for Python 2
-except ImportError:
-    from io import StringIO ## for Python 3
+from io import BytesIO as StringIO # py3
 import os
 import time
 import ntpath
@@ -57,7 +55,7 @@ BEACON_COMMANDS = {
     32: 'LIST_PROCESSES'
     }
 
-CS_FIXED_IV = "abcdefghijklmnop"
+CS_FIXED_IV = b'abcdefghijklmnop' # py3 b'' added
 
 class BeaconTask(object):
     """
@@ -67,7 +65,7 @@ class BeaconTask(object):
 
     def __init__(self, data="", aes_key="", hmac_key="", cs_version=4):
         self.cs_version = cs_version
-        self.data = StringIO.StringIO(data)
+        self.data = StringIO(data)
         self.aes_key = aes_key
         self.hmac_key = hmac_key
         self.counter = self.tick()
@@ -93,17 +91,17 @@ class BeaconTask(object):
             return False 
         result = 0
         for x, y in zip(mac, mac_verif):
-            result |= ord(x) ^ ord(y)
+            result |= x ^ y # py3 ord() removed
         return result == 0
 
     def decrypt(self):
-        encrypted_data = self.data.read(self.data.len-16)
+        encrypted_data = self.data.read(self.data.getbuffer().nbytes-16) # py3 len fix
         signature = self.data.read()
         if not self.compare_mac(hmac.new(self.hmac_key, encrypted_data, HASH_ALGO).digest()[0:16], signature):
             raise AuthenticationError("message authentication failed")
         cypher = AES.new(self.aes_key, AES.MODE_CBC, CS_FIXED_IV)
         data = cypher.decrypt(encrypted_data)
-        self.data = StringIO.StringIO(data)
+        self.data = StringIO(data)
 
         counter = self.readInt()
         print("Counter: %d" % counter)
@@ -112,13 +110,13 @@ class BeaconTask(object):
         print("Output length: %d" % output_length)
 
         # adjust buffer length according to output_length
-        self.data = StringIO.StringIO(self.data.read(output_length))
+        self.data = StringIO(self.data.read(output_length))
 
     def encrypt(self):
         # Prepend the counter and output_length
         self.data.seek(0)
         buf = self.data.read()
-        self.data = StringIO.StringIO()
+        self.data = StringIO()
         self.writeInt(self.counter)
         self.writeInt(len(buf))
         self.data.write(buf)
@@ -127,11 +125,11 @@ class BeaconTask(object):
 
         # encrypt the data
         pad = AES.block_size - len(data) % AES.block_size
-        data = data + pad * '\x00'
+        data = data + pad * b'\x00' # py3 b'' added
         cypher = AES.new(self.aes_key, AES.MODE_CBC, CS_FIXED_IV)
         encrypted_data = cypher.encrypt(data)
         sig = hmac.new(self.hmac_key, encrypted_data, HASH_ALGO).digest()[0:16]
-        self.data = StringIO.StringIO(encrypted_data+sig)
+        self.data = StringIO(encrypted_data+sig)
         self.data.seek(0)
 
 class BeaconReply(BeaconTask):
@@ -147,7 +145,7 @@ class BeaconReply(BeaconTask):
         print("Encrypted size: %d" % enc_size)
 
         # remove any padding so HMAC checks out
-        self.data = StringIO.StringIO(self.data.read(enc_size))
+        self.data = StringIO(self.data.read(enc_size))
         self.decrypt()
 
         # what type of call back is it
@@ -158,7 +156,7 @@ class BeaconReply(BeaconTask):
         # this prepends the header to self.data
         self.data.seek(0)
         buf = self.data.read()
-        self.data = StringIO.StringIO()
+        self.data = StringIO()
         self.writeInt(self.callback_type)
         self.data.write(buf)
         self.data.seek(0)
@@ -168,12 +166,12 @@ class DownloadTask(BeaconReply):
     flen = 0
     callback_type = 2
 
-    def __init__(self, data='', fid=0, filename='', aes_key='', hmac_key=''):
+    def __init__(self, data=b'', fid=0, filename='', aes_key='', hmac_key=''): # py3 b'' added
         if aes_key:
             self.aes_key = aes_key
         if hmac_key:
             self.hmac_key = hmac_key
-        self.data = StringIO.StringIO(data)
+        self.data = StringIO(data)
         self.filename = filename
         self.fid = fid
 
@@ -185,10 +183,10 @@ class DownloadTask(BeaconReply):
     def pack(self):
         # flen is the length of the file (not path)
         self.flen = len(ntpath.basename(self.filename))
-        self.data = StringIO.StringIO()
+        self.data = StringIO()
         self.writeInt(self.fid)
         self.writeInt(self.flen)
-        self.data.write(self.filename)
+        self.data.write(self.filename.encode('utf8')) # py3 encode added
         self.data.seek(0)
         super(DownloadTask, self).pack()
 
@@ -210,7 +208,7 @@ class DownloadWrite(BeaconReply):
             self.hmac_key = hmac_key
         if filedata:
             self.filedata = filedata
-        self.data = StringIO.StringIO(data)
+        self.data = StringIO(data)
         self.fid = int(fid)
 
     def print_task(self):
@@ -233,7 +231,7 @@ def counter():
 
 def process_beacon_task(task):
     task.decrypt()
-    while (task.data.tell() != task.data.len):
+    while (task.data.tell() != task.data.getbuffer().nbytes): # py3 len fix
         command = task.readInt()
         print("Received task: %s" % BEACON_COMMANDS.get(command, 'Unknown (%d)' % command))
         args_len = task.readInt()
