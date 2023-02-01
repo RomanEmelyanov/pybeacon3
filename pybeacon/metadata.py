@@ -4,7 +4,7 @@ import struct
 import base64
 import hashlib
 import binascii
-from io import BytesIO as StringIO# py3
+from io import BytesIO as StringIO # py3
 import sys
 
 import M2Crypto
@@ -212,7 +212,7 @@ class Metadata(object):
         self.writeInt(self.pid)
         self.writeShort(self.port)    
         self.writeByte(4) # TODO: calculate flags
-        self.data.write('\t'.join([self.ver, self.intz, self.comp, self.user, self.proc]))
+        self.data.write('\t'.join([self.ver, self.intz, self.comp, self.user, self.proc]).encode('utf8')) # py3 encode added
         self.data.seek(0)
         return self.rsa_encrypt()
 
